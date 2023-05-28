@@ -1,8 +1,8 @@
 #   Myers Briggs Personality Prediction
 
-University of Texas at Austin, Data Bootcamp 2019-2020
+Indian Institute of Technology, Kanpur - 2023
 
-Group Members - Ekta Sharma | David Altuve | Kat Jansen
+
 
 ![Myers Briggs Personality Types](static/images/personality-types.jpg)
 

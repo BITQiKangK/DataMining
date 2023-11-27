@@ -10,6 +10,7 @@ Indian Institute of Technology, Kanpur - 2023
 
 The purpose of this project is to predict personality types as one of the sixteen categories of Myers Briggs personality types (MBTI) based on the correlation between people's writing styles and their psychological personalities. We believe that social media gives people the platform to express themselves freely and openly and hence those posts can be an indicator of their personality type.  
 We acknowledge the fact that all personality types are equal. 
+You can visit my this project deployed site: https://shashvat-mbti.netlify.app/
 
 ## Tools & Modules Used
 

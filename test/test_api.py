@@ -2,7 +2,7 @@ import requests
 import json
 
 def test_api():
-    base_url = "http://localhost:8000"
+    base_url = "http://localhost:2233"
     
     # 测试根端点
     print("测试API是否运行...")
@@ -17,9 +17,9 @@ def test_api():
     print("\n测试分析功能...")
     
     test_texts = [
-        "我喜欢独自思考问题，经常会想到一些创新的解决方案。我重视逻辑和效率，不太喜欢即兴的社交活动。",
-        "我总是能感受到别人的情绪，喜欢在团队中工作，帮助他人解决问题让我感到满足。",
-        "我喜欢有条理的计划和结构，按时完成任务对我来说非常重要。我不太喜欢突发状况。"
+        "I like to think about problems by myself, and I often come up with innovative solutions. I value logic and efficiency, and I don't like spontaneous social activities.",
+        "I always feel the emotions of others, like to work in a team, and helping others solve problems makes me feel satisfied.",
+        "I like to have a structured plan and structure, completing tasks on time is very important to me. I don't like sudden situations."
     ]
     
     for i, text in enumerate(test_texts):

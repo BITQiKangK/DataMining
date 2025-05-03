@@ -14,13 +14,14 @@ from langchain_openai import OpenAIEmbeddings
 from langchain.schema import Document
 from langchain.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain.schema.messages import SystemMessage, HumanMessage
 
-# 加载环境变量
-load_dotenv()
+openai_api_key = "EMPTY"
+openai_api_base = "http://127.0.0.1:11434/v1"
 
-# 设置OpenAI API密钥
-openai.api_key = os.getenv("OPENAI_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# 初始化全局向量数据库变量
+vectorstore = None
 
 app = FastAPI()
 
@@ -40,55 +41,57 @@ class MBTIResult(BaseModel):
     mbti: str
     explanation: str
 
-# 初始化嵌入模型和向量数据库
-embedding_model = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
-vectorstore = None
-llm = ChatOpenAI(temperature=0.2, api_key=OPENAI_API_KEY)
-
+# 添加向量数据库初始化函数
 async def initialize_vectorstore():
-    """初始化向量数据库，将MBTI参考知识加载并存入"""
+    """初始化向量数据库，从已有的Chroma数据库加载"""
     global vectorstore
     
-    # 加载MBTI参考文档
-    with open("MBTIReference.md", "r", encoding="utf-8") as f:
-        mbti_text = f.read()
-    
-    # 文本分割
-    text_splitter = CharacterTextSplitter(
-        separator="\n\n",
-        chunk_size=1000,
-        chunk_overlap=200,
-        length_function=len
+    try:
+        # 设置持久化目录路径
+        persist_directory = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rag", "chroma_db")
+        
+        # 使用HuggingFace嵌入模型，与原始数据库创建时使用的模型保持一致
+        model_name = "/home/qikangkang/LLMModels/all-roberta-large-v1"  # 本地模型路径
+        embedding_model = HuggingFaceEmbeddings(model_name=model_name)
+        
+        # 从已有的持久化目录加载Chroma数据库
+        vectorstore = Chroma(
+            persist_directory=persist_directory,
+            embedding_function=embedding_model
+        )
+        
+        print(f"向量数据库已成功从{persist_directory}加载")
+    except Exception as e:
+        print(f"加载向量数据库时出错: {str(e)}")
+        raise e
+
+async def initialize_chat_model():
+    global chat_model
+    chat_model = ChatOpenAI(
+        model="llama3.1:8b",
+        api_key=openai_api_key,
+        base_url=openai_api_base
     )
-    
-    chunks = text_splitter.split_text(mbti_text)
-    
-    # 创建文档对象
-    documents = [Document(page_content=chunk) for chunk in chunks]
-    
-    # 创建向量存储
-    vectorstore = Chroma.from_documents(
-        documents=documents,
-        embedding=embedding_model,
-        persist_directory="./chroma_db"
-    )
-    
-    print("向量数据库初始化完成，已加载MBTI参考知识")
 
 @app.on_event("startup")
 async def startup_event():
     """应用启动时初始化向量数据库"""
     await initialize_vectorstore()
+    await initialize_chat_model()
 
 async def analyze_text_with_llm(text: str):
     """使用RAG和LLM分析文本以确定MBTI类型"""
     global vectorstore
+    global chat_model
     
     if vectorstore is None:
         await initialize_vectorstore()
+
+    if chat_model is None:
+        await initialize_chat_model()
     
     # 从向量数据库检索相关内容
-    query = f"分析此人可能的MBTI类型: {text}"
+    query = f"Analyze the most likely MBTI personality type of the text author based on the following reference knowledge and the provided text: {text}"
     retrieval_results = vectorstore.similarity_search(query, k=3)  # 检索最相关的3段文本
     
     # 提取检索到的内容
@@ -99,21 +102,21 @@ async def analyze_text_with_llm(text: str):
     prompt_template = PromptTemplate(
         input_variables=["context", "text"],
         template="""
-        你是一位MBTI性格分析专家。请根据以下参考知识和提供的文本，分析文本作者最可能的MBTI人格类型。
+        You are a MBTI personality analysis expert. Please analyze the most likely MBTI personality type of the text author based on the following reference knowledge and the provided text.
 
-        ### MBTI参考知识:
+        ### MBTI Reference Knowledge:
         {context}
 
-        ### 待分析文本:
+        ### Text to Analyze:
         {text}
 
-        请首先分析文本中的语言模式和行为倾向，然后用以下格式回答:
-        1. 能量维度 (E/I): [分析]
-        2. 信息获取 (S/N): [分析]
-        3. 决策方式 (T/F): [分析]
-        4. 生活方式 (J/P): [分析]
-        5. 综合MBTI类型: [填入四字母类型，如INTJ]
-        6. 解释: [简洁解释为什么这个人属于这种类型]
+        Please first analyze the language patterns and behavioral tendencies in the text, and then answer in the following format:
+        1. Energy Dimension (E/I): [Analysis]
+        2. Information Acquisition (S/N): [Analysis]
+        3. Decision-Making Style (T/F): [Analysis]
+        4. Lifestyle (J/P): [Analysis]
+        5. Comprehensive MBTI Type: [Fill in the four-letter type, e.g., INTJ]
+        6. Explanation: [Brief explanation of why this person belongs to this type]
         """
     )
     
@@ -125,16 +128,14 @@ async def analyze_text_with_llm(text: str):
     
     try:
         # 调用LLM
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "你是一位MBTI分析专家，能够根据文本准确分析出人的性格类型。"},
-                {"role": "user", "content": prompt}
-            ]
-        )
+        messages = [
+            SystemMessage(content="You are a MBTI analysis expert, able to accurately analyze the personality type of a person based on text."),
+            HumanMessage(content=prompt)
+        ]
+        response = chat_model.invoke(messages)
         
         # 解析回复
-        reply = response.choices[0].message.content
+        reply = response.content
         
         # 提取MBTI类型
         mbti_type = ""
@@ -155,7 +156,7 @@ async def analyze_text_with_llm(text: str):
         if not mbti_type:
             # 在"综合MBTI类型"行中查找
             for line in reply.split('\n'):
-                if "综合MBTI类型" in line or "最终类型" in line:
+                if "Comprehensive MBTI Type" in line or "Final Type" in line:
                     for mbti in ["ISFJ", "ISFP", "ISTJ", "ISTP", "INFJ", "INFP", "INTJ", "INTP",
                                 "ESFJ", "ESFP", "ESTJ", "ESTP", "ENFJ", "ENFP", "ENTJ", "ENTP"]:
                         if mbti in line:
@@ -164,10 +165,10 @@ async def analyze_text_with_llm(text: str):
             
             # 如果仍未找到，则尝试分析四个维度
             if not mbti_type:
-                i_or_e = "I" if "内向" in reply else "E"
-                n_or_s = "N" if "直觉" in reply else "S"
-                t_or_f = "T" if "思考" in reply else "F"
-                j_or_p = "J" if "判断" in reply else "P"
+                i_or_e = "I" if "Introverted" in reply else "E"
+                n_or_s = "N" if "Intuitive" in reply else "S"
+                t_or_f = "T" if "Thinking" in reply else "F"
+                j_or_p = "J" if "Judging" in reply else "P"
                 mbti_type = i_or_e + n_or_s + t_or_f + j_or_p
         
         return {
@@ -191,4 +192,4 @@ async def root():
     return {"message": "MBTI分析API正在运行", "status": "向量数据库已加载"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host="0.0.0.0", port=2233) 

@@ -5,8 +5,17 @@
 ## 功能
 
 - 接收文本输入
-- 使用RAG和OpenAI API分析文本
+- 使用向量数据库存储MBTI参考知识
+- 根据输入文本检索相关MBTI知识
+- 使用RAG技术和OpenAI API分析文本
 - 返回推测的MBTI类型和详细解释
+
+## 技术实现
+
+- **向量数据库**: 使用Chroma存储MBTI参考知识的向量嵌入
+- **文本分割**: 使用LangChain的CharacterTextSplitter将参考文档分割成适当大小的块
+- **语义检索**: 根据用户输入文本，从向量数据库中检索最相关的MBTI参考知识
+- **RAG技术**: 将检索到的知识与用户输入结合，使用OpenAI API进行增强分析
 
 ## 安装
 
@@ -27,7 +36,7 @@
 python app.py
 ```
 
-服务将在 http://localhost:8000 上运行
+服务将在 http://localhost:8000 上运行，启动时会自动将MBTIReference.md文件加载到向量数据库中。
 
 ## API端点
 

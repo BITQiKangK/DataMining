@@ -1,5 +1,5 @@
-FROM python:3.7-slim
-ENV APP_HOME /
+FROM python:3.10
+ENV APP_HOME=/
 WORKDIR $APP_HOME
 COPY . ./
 RUN pip install pipenv

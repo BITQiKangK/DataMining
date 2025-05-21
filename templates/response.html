@@ -59,6 +59,16 @@
                 <div class="form-group">
                     <form class="form-inline my-2 my-lg-0" method="POST" action="/response">
                         <input class="form-control mr-md-2" type="text" name="fsnippet" placeholder="Please enter up to 160 characters" aria-label="Search" required>
+                        <div class="ml-2 mr-2">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="prediction_method" id="mlModel" value="ml" checked>
+                                <label class="form-check-label" for="mlModel">机器学习模型</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="prediction_method" id="llmModel" value="llm">
+                                <label class="form-check-label" for="llmModel">大语言模型 (RAG+LLM)</label>
+                            </div>
+                        </div>
                         <button class="btn btn-outline-success my-2 my-sm-0" id="search_button" type="submit" value="Submit">Go!</button>
                     </form>
                 </div>
@@ -79,6 +89,7 @@
 					<i>"{{string}}"</i>
 					<hr>
 					<p class="mb-0">Your predicted personality type is:</p><strong>{{name}}</strong>
+					<p class="mt-2"><small>预测方法: {% if method == "llm" %}大语言模型 (RAG+LLM){% else %}机器学习模型{% endif %}</small></p>
 					<button type="button" class="close" data-dismiss="alert">&times;</button>
 					{% endif %}
 				</div>

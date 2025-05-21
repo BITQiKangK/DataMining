@@ -18,9 +18,13 @@ def response():
 
     if request.method == "POST":
         snippet = request.form["fsnippet"]
-        # Testing with predict.py
-        personality_type = predict(snippet)
-    return render_template("response.html", name=personality_type, string=snippet)
+        # 获取预测方法，默认为ml
+        method = request.form.get("prediction_method", "ml")
+        # 调用预测函数，传入预测方法
+        personality_type = predict(snippet, method=method)
+        # 将预测方法传递给模板，以便显示
+        return render_template("response.html", name=personality_type, string=snippet, method=method)
+    return render_template("response.html")
 
 
 @app.route("/analysis")
